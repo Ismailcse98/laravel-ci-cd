@@ -45,7 +45,7 @@ jobs:
             ${{runner.os}}-composer-
       - name: Copy .env file
         run: |
-          cp .env.ci .env
+          cp .env.ai .env
       - name: install composer Dependencies
         run: |
           composer install -q --no-ansi \
