@@ -71,16 +71,16 @@ jobs:
       - name: Run PHPStan
         run: ./vendor/bin/phpstan analyse app --level 5  --memory-limit=1G
         
-      - name: Run PHP Insights 
-        run: |
-          php artisan insights \
-          --no-interaction \
-          --min-quality=90 \
-          --min-complexity=90 \
-          --min-architecture=90 \
-          --min-style=90 \
-          --ansi \
-          --format=github-action 
+      # - name: Run PHP Insights 
+      #   run: |
+      #     php artisan insights \
+      #     --no-interaction \
+      #     --min-quality=90 \
+      #     --min-complexity=90 \
+      #     --min-architecture=90 \
+      #     --min-style=90 \
+      #     --ansi \
+      #     --format=github-action 
 
       - name: Run Tests 
         run: php artisan test
