@@ -13,68 +13,65 @@ jobs:
     services:
       mysql:
         image: mysql:8.0
-        ports:
-          - 3306:3306
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: test_db
-        options: --health-cmd="mysqladmin ping"
-
+        ports:
+         - 3306:3306
+        options: >- 
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
-      - name: Code Checkout
+      - name: Checkout Code 
         uses: actions/checkout@v4
+        
+      - name: Setup PHP 
+        uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, xml, curl, bcmath, ctype, fileinfo, json, tokenizer, pdo, pdo_mysql, openssl, swoole, gd
-          php.ini: |
-            error_reporting = E_ALL
-            display_errors = On
-            display_startup_errors = On
-            memory_limit = 512M
-            upload_max_filesize = 100M
-            post_max_size = 100M
-            max_execution_time = 300
-            max_input_time = 300
+          extensions: mbstring, xml, curl, bcmath, ctype, fileinfo, tokenizer, pdo_mysql, gd coverage: none
+      - name: Verify PHP & Composer 
+        run: |
+          php -v 
+          composer --version 
+      - name: Cache Composer Dependencies 
+        uses: actions/cache@v4 
+        with: 
+          path: vendor key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }} restore-keys: | ${{ runner.os }}-composer-
+      - name: Copy Environment File 
+        run: cp .env.ai .env 
+      - name: Install Composer Dependencies 
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Generate Application Key 
+        run: php artisan key:generate --force 
 
-      - name: Cache Composer Dependencies
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: ${{runner.os}}-composer-${{hashFiles('**/composer.lock')}}
-          restore_keys: |
-            ${{runner.os}}-composer-
-      - name: Copy .env file
+      - name: Configure Database 
         run: |
-          cp .env.ai .env
-      - name: install composer Dependencies
+          echo "DB_CONNECTION=mysql" >> .env 
+          echo "DB_HOST=127.0.0.1" >> .env 
+          echo "DB_PORT=3306" >> .env 
+          echo "DB_DATABASE=test_db" >> .env 
+          echo "DB_USERNAME=root" >> .env 
+          echo "DB_PASSWORD=root" >> .env
+      - name: Set Directory Permissions 
+        run: | 
+          chmod -R 775 storage bootstrap/cache
+      - name: Run Migrations 
+        run: php artisan migrate --force 
+      - name: Run PHPStan
+        run: ./vendor/bin/phpstan analyse --memory-limit=1G
+        
+      - name: Run PHP Insights 
         run: |
-          composer install -q --no-ansi \
-          --no-interaction --no-scripts --no-progress --prefer-dist --optimize-autoloader
-      - name: Generate Application Key
-        run: |
-          php artisan key:generate --force
-
-      - name: Directory Permissions
-        run: |
-          sudo chown -R $USER:$USER storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache
-      - name: Run Migrations
-        run: |
-          php artisan migrate --force
-
-      - name: phpstan
-        run: |
-          ./vendor/bin/phpstan analyse --level 5 --memory-limit=1G
-      
-      - name: phpinsights
-        run: |
-          php artisan insights --no-interaction \
-          --min-quality=90 --min-complexity=90 \
-          --min-architecture=90 --min-style=90 \
-          --ansi --format=github-action
-      - name: Show DB config
-        run: |
-          grep DB_ .env
-      - name: Run Tests
-        run: |
-          php artisan test
+          php artisan insights \
+          --no-interaction \
+          --min-quality=90 \
+          --min-complexity=90 \
+          --min-architecture=90 \
+          --min-style=90 \
+          --ansi \
+          --format=github-action 
+      - name: Run Tests 
+        run: php artisan test
