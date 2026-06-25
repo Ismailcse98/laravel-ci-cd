@@ -61,3 +61,20 @@ jobs:
       - name: Run Migrations
         run: |
           php artisan migrate --force
+
+      - name: phpstan
+        run: |
+          ./vendor/bin/phpstan analyse --level 5 --memory-limit=1G
+      
+      - name: phpinsights
+        run: |
+          php artisan insights --no-interaction \
+          --min-quality=90 --min-complexity=90 \
+          --min-architecture=90 --min-style=90 \
+          --ansi --format=github-action
+      - name: Show DB config
+        run: |
+          grep DB_ .env
+      - name: Run Tests
+        run: |
+          php artisan test
