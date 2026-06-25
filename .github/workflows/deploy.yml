@@ -1,0 +1,63 @@
+name: CICD pipeline
+
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main", "dev"]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSORD: root
+          MYSQL_DATABASE: test_db
+        options: --health-cmd="mysqladmin ping"
+
+    steps:
+      - name: Code Checkout
+      - uses: actions/checkout@v4
+        with:
+          php-version: "8.2"
+          extensions: mbstring, xml, curl, bcmath, ctype, fileinfo, json, tokenizer, pdo, pdo_mysql, openssl, swoole, gd
+          php.ini: |
+            error_reporting = E_ALL
+            display_errors = On
+            display_startup_errors = On
+            memory_limit = 512M
+            upload_max_filesize = 100M
+            post_max_size = 100M
+            max_execution_time = 300
+            max_input_time = 300
+
+      - name: Cache Composer Dependencies
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{runner.os}}-composer-${{hashFiles('**/composer.lock')}}
+          restore_keys: |
+            ${{runner.os}}-composer-
+      - name: Copy .env file
+        run: |
+          cp .env.ci .env
+      - name: install composer Dependencies
+        run: |
+          composer install -q --no-ansi \
+          --no-interaction --no-scripts --no-progress --prefer-dist --optimize-autoloader
+      - name: Generate Application Key
+        run: |
+          php artisan key:generate --force
+
+      - name: Directory Permissions
+        run: |
+          sudo chown -R $USER:$USER storage bootstrap/cache
+          sudo chmod -R 775 storage bootstrap/cache
+      - name: Run Migrations
+        run: |
+          php artisan migrate --force
