@@ -10,7 +10,11 @@ on:
       - main
 
 jobs:
+
   test:
+
+    name: Laravel Tests
+
     runs-on: ubuntu-latest
 
     steps:
@@ -18,8 +22,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show PHP version
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, pdo, pdo_sqlite
+          coverage: none
+
+      - name: Check PHP version
         run: php -v
 
-      - name: Show repository files
-        run: ls -la
+      - name: Check Composer version
+        run: composer --version
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare Laravel environment
+        run: cp .env.example .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Run Laravel tests
+        run: php artisan test
