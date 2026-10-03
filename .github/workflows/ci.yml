@@ -26,6 +26,10 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/database.sqlite
+
     steps:
 
       - name: Checkout repository
@@ -51,6 +55,9 @@ jobs:
 
       - name: Prepare Laravel environment
         run: cp .env.example .env
+
+      - name: Create SQLite database
+        run: touch database/database.sqlite
 
       - name: Generate application key
         run: php artisan key:generate
