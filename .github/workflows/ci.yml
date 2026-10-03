@@ -9,6 +9,15 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
+concurrency:
+  group: laravel-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
 
   test:
@@ -28,6 +37,8 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, bcmath, pdo, pdo_sqlite
           coverage: none
+          tools: composer
+          cache: composer
 
       - name: Check PHP version
         run: php -v
