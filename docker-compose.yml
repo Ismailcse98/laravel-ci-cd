@@ -37,10 +37,10 @@ services:
     container_name: laravel_mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: category_crud
-      MYSQL_USER: category_user
-      MYSQL_PASSWORD: category_password
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
@@ -54,8 +54,8 @@ services:
           "-h",
           "localhost",
           "-u",
-          "category_user",
-          "-pcategory_password"
+          "${DB_USERNAME}",
+          "-p${DB_PASSWORD}"
         ]
       interval: 10s
       timeout: 5s

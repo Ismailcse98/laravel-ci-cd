@@ -1,4 +1,4 @@
-name: Laravel CI
+name: Laravel CI/CD
 
 on:
   push:
@@ -18,8 +18,12 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  DOCKER_IMAGE: ismailbdcse/laravel-category-api
+
 jobs:
 
+  # JOB 1: Laravel Tests
   test:
 
     name: Laravel Tests
@@ -68,7 +72,7 @@ jobs:
       - name: Run Laravel tests
         run: php artisan test
          
-
+  #JOB 2: Build and Push Docker Image
   docker:
     name: Build and Push Docker Image
 
@@ -104,7 +108,82 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:sha-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  
+  # JOB 3: Deploy to EC2
+
+  deploy:
+
+    name: Deploy to AWS EC2
+
+    needs:
+      - docker
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Deploy application to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          IMAGE_TAG: sha-${{ github.sha }}
+
+        run: |
+
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          ssh \
+            -i ~/.ssh/ec2_key \
+            "$EC2_USER@$EC2_HOST" \
+            "cd /opt/laravel-category-api && \
+             IMAGE_TAG=$IMAGE_TAG docker compose pull && \
+             IMAGE_TAG=$IMAGE_TAG docker compose up -d"
+
+          rm -f ~/.ssh/ec2_key
+
+
+  # JOB 4: Production Verification
+
+  verify:
+
+    name: Verify Production
+
+    needs:
+      - deploy
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Verify application containers
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+
+        run: |
+
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          ssh \
+            -i ~/.ssh/ec2_key \
+            "$EC2_USER@$EC2_HOST" \
+            "cd /opt/laravel-category-api && \
+             docker compose ps && \
+             docker compose exec -T app php artisan --version"
+
+          rm -f ~/.ssh/ec2_key
