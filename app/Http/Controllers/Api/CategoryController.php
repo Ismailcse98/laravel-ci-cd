@@ -18,7 +18,7 @@ class CategoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Categories retrieved successful.',
+            'message' => 'Categories retrieved successfully.',
             'data' => $categories,
         ]);
     }
@@ -31,7 +31,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'unique:categories,slug'],
-            'description' => ['nullable', 'string'],
+            'description' => ['required', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
